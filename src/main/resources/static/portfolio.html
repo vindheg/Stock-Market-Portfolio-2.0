@@ -195,7 +195,9 @@
 
   <!-- JS LOGIC -->
   <script>
-    const BACKEND_HOST = "https://stock-market-portfolio-1-i85m.onrender.com";
+    /* 🔥 FIXED URL — Your real backend */
+    const BACKEND_HOST = "https://stock-market-portfolio-1.onrender.com";
+
     const username = sessionStorage.getItem("username");
     if (!username) location.href = "login.html";
 
@@ -243,13 +245,12 @@
     }
 
 
-    /* FIXED loadUser() */
+    /* LOAD USER */
     async function loadUser() {
       try {
         const res = await fetch(`${BACKEND_HOST}/api/stocks/portfolio/${username}`);
         userState = await res.json();
 
-        // Ensure balance always exists
         if (userState.balance === undefined || userState.balance === null) {
           userState.balance = 100000;
         }
