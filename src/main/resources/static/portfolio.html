@@ -83,7 +83,7 @@
 
   <main class="relative z-20 px-4 md:px-10 py-8">
 
-    <!-- PORTFOLIO -->
+    <!-- PORTFOLIO SECTION -->
     <section id="portfolio" class="tab-content">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
@@ -104,7 +104,7 @@
       </div>
     </section>
 
-    <!-- TRADE -->
+    <!-- TRADE SECTION -->
     <section id="trade" class="tab-content hidden">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -167,24 +167,20 @@
       </div>
     </section>
 
-    <!-- MARKET -->
+    <!-- MARKET SECTION -->
     <section id="market" class="tab-content hidden">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         <div class="glass rounded-xl p-5">
-          <h3 class="font-semibold mb-3">NSE Stocks</h3>
-          <ul id="nse-list" class="space-y-2 text-gray-300"></ul>
-        </div>
-
-        <div class="glass rounded-xl p-5">
-          <h3 class="font-semibold mb-3">BSE Stocks</h3>
-          <ul id="bse-list" class="space-y-2 text-gray-300"></ul>
+          <h3 class="font-semibold mb-3">NSE/BSE Live Prices</h3>
+          <ul id="prices-list" class="space-y-2 text-gray-300"></ul>
         </div>
 
       </div>
     </section>
 
   </main>
+
 
   <!-- POPUP -->
   <div id="popup"
@@ -195,116 +191,87 @@
 
   <!-- JS LOGIC -->
   <script>
-    /* 🔥 FIXED URL — Your real backend */
     const BACKEND_HOST = "https://stock-market-portfolio-1.onrender.com";
-
     const username = sessionStorage.getItem("username");
-    if (!username) location.href = "login.html";
 
+    if (!username) location.href = "login.html";
     document.getElementById("username-display").innerText = `Welcome, ${username}`;
 
-    const NSE = {
-      "Jio Financial Services": 283.55,
-      "Bharat Electronics": 384.80,
-      "Nestle India": 2398.00,
-      "Tata Motors": 709.60
-    };
-
-    const BSE = {
-      "Axis": 1175.60,
-      "Britania": 5549.50,
-      "ICICI": 1429.00,
-      "HCL Tech": 1641.50
-    };
-
-    let userState = { balance: 100000, holdings: {} };
+    let userState = { balance: 100000, holdings: {}, prices: {} };
 
 
-    /* POPUP FUNCTION */
-    function showPopup(message, type = "success") {
+    /* POPUP */
+    function showPopup(message, type="success") {
       const el = document.getElementById("popup");
       el.innerText = message;
 
-      if (type === "success") {
-        el.style.border = "1px solid rgba(78,129,255,0.6)";
-        el.style.boxShadow = "0 0 18px rgba(78,129,255,0.5)";
-      } else {
-        el.style.border = "1px solid rgba(255,77,77,0.6)";
-        el.style.boxShadow = "0 0 18px rgba(255,77,77,0.45)";
-      }
+      el.style.border = type === "success"
+          ? "1px solid rgba(78,129,255,0.6)"
+          : "1px solid rgba(255,77,77,0.6)";
 
       el.classList.remove("opacity-0");
       el.classList.add("opacity-100");
-      el.style.transform = "translateY(0)";
 
       setTimeout(() => {
         el.classList.add("opacity-0");
         el.classList.remove("opacity-100");
-        el.style.transform = "translateY(-20px)";
       }, 2000);
     }
 
 
     /* LOAD USER */
     async function loadUser() {
-      try {
-        const res = await fetch(`${BACKEND_HOST}/api/stocks/portfolio/${username}`);
-        userState = await res.json();
+      const res = await fetch(`${BACKEND_HOST}/api/stocks/portfolio/${username}`);
+      userState = await res.json();
 
-        if (userState.balance === undefined || userState.balance === null) {
-          userState.balance = 100000;
-        }
-
-      } catch {
-        userState = { holdings: {}, balance: 100000 };
-      }
+      if (!userState.prices) userState.prices = {};
 
       renderPortfolio();
-      renderMarketLists();
+      renderPricesList();
     }
 
 
+    /* RENDER PORTFOLIO */
     function renderPortfolio() {
       const container = document.getElementById("portfolio-cards");
       container.innerHTML = "";
+
+      const holdings = Object.entries(userState.holdings);
       const empty = document.getElementById("empty-state");
 
-      const stocks = Object.keys(userState.holdings || {});
-      if (stocks.length === 0) {
-        empty.classList.remove("hidden");
-      } else {
-        empty.classList.add("hidden");
-      }
+      if (holdings.length === 0) empty.classList.remove("hidden");
+      else empty.classList.add("hidden");
 
-      stocks.forEach(stock => {
-        const qty = userState.holdings[stock];
-        const price = NSE[stock] || BSE[stock] || 0;
+      holdings.forEach(([stock, qty]) => {
+        const price = userState.prices[stock] ?? 0;
         const value = qty * price;
 
         const card = document.createElement("div");
-        card.className = "glass p-5 rounded-xl card-hover shadow-lg transition";
+        card.className = "glass p-5 rounded-xl card-hover";
         card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-lg font-semibold">${stock}</h3>
-              <p class="text-gray-400 text-sm">Qty: ${qty}</p>
-            </div>
-            <div class="text-right">
-              <p class="text-gray-400 text-sm">Price</p>
-              <p class="text-[var(--accent)] font-semibold">₹${price.toFixed(2)}</p>
-            </div>
-          </div>
-
-          <div class="mt-4">
-            <p class="text-gray-400 text-sm">Total Value</p>
-            <p class="text-xl font-bold text-[var(--accent)]">₹${value.toFixed(2)}</p>
-          </div>
+          <h3 class="text-lg font-semibold">${stock}</h3>
+          <p class="text-gray-400 text-sm">Qty: ${qty}</p>
+          <p class="text-gray-400 text-sm">Price: ₹${price.toFixed(2)}</p>
+          <p class="text-xl font-bold text-[var(--accent)]">₹${value.toFixed(2)}</p>
         `;
         container.appendChild(card);
       });
 
       const balance = userState.balance ?? 100000;
       document.getElementById("balance-display").innerText = "₹" + balance.toFixed(2);
+    }
+
+
+    /* MARKET PRICES TAB */
+    function renderPricesList() {
+      const list = document.getElementById("prices-list");
+      list.innerHTML = "";
+
+      Object.entries(userState.prices).forEach(([stock, price]) => {
+        list.innerHTML += `
+          <li>${stock}: ₹${price.toFixed(2)}</li>
+        `;
+      });
     }
 
 
@@ -324,7 +291,8 @@
       if (res.ok) {
         userState = await res.json();
         renderPortfolio();
-        showPopup(`Bought ${qty} shares of ${stock}`, "success");
+        renderPricesList();
+        showPopup(`Bought ${qty} of ${stock}`);
       } else {
         showPopup(await res.text(), "error");
       }
@@ -347,29 +315,12 @@
       if (res.ok) {
         userState = await res.json();
         renderPortfolio();
-        showPopup(`Sold ${qty} shares of ${stock}`, "success");
+        renderPricesList();
+        showPopup(`Sold ${qty} of ${stock}`);
       } else {
         showPopup(await res.text(), "error");
       }
     };
-
-
-    /* MARKET LISTS */
-    function renderMarketLists() {
-      const nseList = document.getElementById("nse-list");
-      const bseList = document.getElementById("bse-list");
-
-      nseList.innerHTML = "";
-      bseList.innerHTML = "";
-
-      Object.entries(NSE).forEach(([name, price]) => {
-        nseList.innerHTML += `<li>${name}: ₹${price}</li>`;
-      });
-
-      Object.entries(BSE).forEach(([name, price]) => {
-        bseList.innerHTML += `<li>${name}: ₹${price}</li>`;
-      });
-    }
 
 
     /* LOGOUT */
@@ -394,7 +345,7 @@
     loadUser();
 
 
-    /* PARTICLES */
+    /* PARTICLES – unchanged */
     const canvas = document.getElementById("particles");
     const ctx = canvas.getContext("2d");
     let particles = [];
@@ -410,7 +361,6 @@
         this.r = Math.random() * 2 + 1;
         this.vx = (Math.random() - 0.5) * 0.4;
         this.vy = (Math.random() - 0.5) * 0.4;
-        this.c = "rgba(78,129,255,0.15)";
       }
       update() {
         this.x += this.vx;
@@ -421,7 +371,7 @@
       draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fillStyle = this.c;
+        ctx.fillStyle = "rgba(78,129,255,0.15)";
         ctx.fill();
       }
     }
